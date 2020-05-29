@@ -1,1 +1,5 @@
-
+This directory contain accident(UK) data from year 2016 to 2018 taken from https://data.gov.uk/. 
+Accident data are further divided into 3 part:
+ 1.Accident related details
+ 2.Casualties related details
+ 3.Vehicles related details
