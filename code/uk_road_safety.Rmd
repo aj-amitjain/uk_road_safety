@@ -15,6 +15,10 @@ knitr::opts_chunk$set(echo = TRUE)
 library(stats19)
 library(ggplot2)
 library(dplyr)
+#install.packages('sugrrants')
+
+library(sugrrants)
+
 ```
 
 ```{r}
@@ -171,7 +175,7 @@ ggplot(data=top_casualty_type, aes(x=Casualty_Type, y=Count, color=Casualty_Seve
 
 ## Pedestrain Casualties Cases
 
-table(casualties$Pedestrian_Location)
+#table(casualties$Pedestrian_Location)
 
 t = (casualties$Casualty_Type  == 0 & casualties$Pedestrian_Location != -1)
 
@@ -258,18 +262,20 @@ there is increase in serious cases over the year.
 
 ```{r}
 
+#rm(list=c('fatalities'))
 
 ## Fatal Cases
 fatalities <- casualties[casualties$Casualty_Severity == 1, ]
+fatalities <- fatalities[fatalities$Sex_of_Casualty != -1, ]
 
 ggplot(data=fatalities[fatalities$Age_of_Casualty != -1, ], aes(x=Age_of_Casualty)) + 
-  geom_histogram(bins=10, aes(fill=Year)) + 
+  geom_density(aes(fill=Year), alpha=0.5) + 
   scale_x_continuous(breaks = seq(0,100,10)) + 
   facet_wrap(~Sex_of_Casualty)
 ```                
 
 -Fatal casualties are higest among yonger male which reduces with age. 
--For female fatalties is high for yonger female which slight decrease for age group till 60, and then its again high for age 60 to aroud 90. 
+-For female fatalties is high for yonger female which slight decrease for age group till aound 50, and then its again high for age 60 to aroud 90. 
 -There has been a similar trend over the year. 
 
 
@@ -282,7 +288,7 @@ serious_severity <- casualties[casualties$Casualty_Severity == 2, ]
 serious_severity <- serious_severity[serious_severity$Sex_of_Casualty != -1, ]
 
 ggplot(data=serious_severity[serious_severity$Age_of_Casualty != -1, ], aes(x=Age_of_Casualty)) + 
-  geom_histogram(bins=10, aes(fill=Year)) + 
+  geom_density(aes(fill=Year), alpha=0.25) + 
   scale_x_continuous(breaks = seq(0,100,10)) + 
   facet_wrap(~Sex_of_Casualty)
                 
@@ -304,9 +310,7 @@ accidents_2017 <- read.csv('../dataset/dftRoadSafetyData_Accidents_2017.csv')
 accidents_2018 <- read.csv('../dataset/dftRoadSafetyData_Accidents_2018.csv')
 
 
-#dim(accidents_2016)
-#dim(accidents_2017)
-#dim(accidents_2018)
+#dim(accidents_2016)[1] + dim(accidents_2017)[1] + dim(accidents_2018)[1]
 
 colnames(accidents_2017) <- colnames(accidents_2016)
 colnames(accidents_2018) <- colnames(accidents_2016)
@@ -315,6 +319,13 @@ colnames(accidents_2018) <- colnames(accidents_2016)
 accidents_2016$Year <- 2016
 accidents_2017$Year <- 2017
 accidents_2018$Year <- 2018
+
+accidents_2016$Date <- as.Date(accidents_2016$Date, "%d-%m-%Y")
+accidents_2017$Date <- as.Date(accidents_2017$Date, "%d/%m/%Y")
+accidents_2018$Date <- as.Date(accidents_2018$Date, "%d/%m/%Y")
+
+
+#sum(is.na(accidents_2018$Time))
 
 accidents <- rbind(accidents_2016, accidents_2017, accidents_2018)
 
@@ -347,18 +358,21 @@ ggplot(data=casualties_location[casualties_location$Casualty_Severity == 1, ], a
 accident_time <- accidents %>%
                         select(Accident_Index, Date, Day_of_Week, Time)
 
-
-accident_time$Hour <- format(strptime(accident_time$Time,"%H:%M"),'%H')
-accident_time$Day <- format(as.Date(accident_time$Date, "%d/%m/%Y"), "%d")
-accident_time$Month <- format(as.Date(accident_time$Date, "%d/%m/%Y"), "%m")
+accident_time$Hour <- as.factor(as.integer(format(strptime(accident_time$Time,"%H:%M"),'%H')))
+accident_time$Day <- as.factor(as.integer(format(as.Date(accident_time$Date, "%Y-%m-%d"), "%d")))
+accident_time$Month <- as.factor(as.integer(format(as.Date(accident_time$Date, "%Y-%m-%d"), "%m")))
 
 accident_time$Quarter <- as.factor(ifelse(as.integer(accident_time$Month) > 9, 4, 
                                    ifelse(as.integer(accident_time$Month) > 6, 3,
                                           ifelse(as.integer(accident_time$Month) > 3, 2, 1))))
 
 
-
+glimpse(accident_time)
 #head(accident_time[20:30, ])
+#dim(accident_time)
+accident_time <- na.omit(accident_time)
+
+
 
 casualties_time <- merge(casualties, accident_time, by="Accident_Index")
 
@@ -387,32 +401,46 @@ to other days except sunday.
 
 ```{r}
 ## Severity 3 - slight
-ggplot(data=casualties_week[casualties_week$Casualty_Severity == 3, ], aes(x=Day_of_Week, y=Count)) +
-        geom_point() +
-        geom_line() +
-        facet_wrap(~Year)
+#ggplot(data=casualties_week[casualties_week$Casualty_Severity == 3, ], aes(x=Day_of_Week, y=Count)) +
+#        geom_point() +
+#        geom_line() +
+#        facet_wrap(~Year)
+
+
+ggplot(data=casualties_week[casualties_week$Casualty_Severity == 3, ], aes(x=Day_of_Week, y=Count/1000)) +
+        geom_bar(stat = 'identity', aes(fill=Year)) +
+        geom_line() + 
+        facet_wrap(~Year) + 
+        xlab('Day of Week') +
+        ylab('Count (K)')
 
 ```
 
 ```{r}
 ## Severity 2 - serious case
-ggplot(data=casualties_week[casualties_week$Casualty_Severity == 2, ], aes(x=Day_of_Week, y=Count)) + 
-        geom_point() + 
+
+ggplot(data=casualties_week[casualties_week$Casualty_Severity == 2, ], aes(x=Day_of_Week, y=Count/1000)) +
+        geom_bar(stat = 'identity', aes(fill=Year)) +
         geom_line() + 
-        facet_wrap(~Year)
+        facet_wrap(~Year) + 
+        xlab('Day of Week') +
+        ylab('Count (K)')
 
 
 ```
 
-Severity 2 (serious) have similar monday to friday increase trend. friday with higest count. 
+Severity 2 (serious) have similar monday to friday increasing trend. friday with higest count. 
 
 
 ```{r}
 ## Severity 1 - fatal
-ggplot(data=casualties_week[casualties_week$Casualty_Severity == 1, ], aes(x=Day_of_Week, y=Count)) + 
-        geom_point() + 
+
+ggplot(data=casualties_week[casualties_week$Casualty_Severity == 1, ], aes(x=Day_of_Week, y=Count/1000)) +
+        geom_bar(stat = 'identity', aes(fill=Year)) +
         geom_line() + 
-        facet_wrap(~Year)
+        facet_wrap(~Year) + 
+        xlab('Day of Week') +
+        ylab('Count (K)')
 
 ```
 
@@ -428,16 +456,29 @@ casualties_month <- casualties_time %>%
                     summarise(Count=n())
 
 
-casualties_month$Month <- as.factor(casualties_month$Month)
+#casualties_month$Month <- as.integer(casualties_month$Month)
+#                                    labels = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"), 
+#                                    levels=c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"))
 
-ggplot(data=casualties_month[casualties_month$Casualty_Severity == 1, ], aes(x=Month, y=Count, group=Year)) + 
-        geom_point() + 
+# ggplot(data=casualties_month[casualties_month$Casualty_Severity == 1, ], aes(x=Month, y=Count, group=Year)) +
+#         geom_point() +
+#         geom_line() +
+#         facet_wrap(~Year)
+
+
+
+ggplot(data=casualties_month[casualties_month$Casualty_Severity == 1, ], aes(x=Month, y=Count, group=Year)) +
+        geom_bar(stat = 'identity', aes(fill=Year)) +
         geom_line() + 
-        facet_wrap(~Year)
+        facet_wrap(~Year) + 
+        xlab('Day of Week') +
+        ylab('Count')
 
 ```
 
-Over the year fatalities have lower count for month 2,3,4. For some reason there is a sudden increase in 5th & 8th month every year. 
+
+There is an increaing trend from month January to December. Though there are few month with lower count in between. 
+
 
 ```{r}
 
@@ -446,16 +487,29 @@ casualties_quarter <- casualties_time %>%
                     group_by(Casualty_Severity, Quarter, Year) %>%
                     summarise(Count=n())
 
+#casualties_quarter <- na.omit(casualties_quarter)
+#glimpse(casualties_quarter)
+#casualties_quarter$Quarter <- as.integer(casualties_quarter$Quarter)
 
-ggplot(data=casualties_quarter[casualties_quarter$Casualty_Severity == 1, ], aes(x=Quarter, y=Count)) + 
-        geom_point() + 
+
+
+# ggplot(data=casualties_quarter[casualties_quarter$Casualty_Severity == 1, ], aes(x=Quarter, y=Count, group=Year)) + 
+#         geom_point() + 
+#         geom_line() + 
+#         facet_wrap(~Year)
+
+ggplot(data=casualties_quarter[casualties_quarter$Casualty_Severity == 1, ], aes(x=Quarter, y=Count, group=Year)) + 
+        geom_bar(stat = 'identity', aes(fill=Year)) +
         geom_line() + 
-        facet_wrap(~Year)
+        facet_wrap(~Year) + 
+        xlab('Quarter') +
+        ylab('Count')
+
 
 ```
 
-Over the year, There is an increasing trend for the fatalities case for the 1 to 4 quarter. 
-For first quarter of year the count for fatalities have decreased but this is opposite for last 2 quarters.
+Over the year, There is an increasing trend for the fatalities case for  1st to 4th quarter. 
+For first quarter of year the count for fatalities have decreased over the but this is opposite for last 2 quarters.
 
 ```{r}
 
@@ -463,20 +517,349 @@ casualties_hour <- casualties_time %>%
                     group_by(Casualty_Severity, Hour, Year) %>%
                     summarise(Count=n())
 
-sum(is.na(casualties_hour))
+casualties_hour <- na.omit(casualties_hour)
+
+# ggplot(data=casualties_hour[casualties_hour$Casualty_Severity == 1, ], aes(x=Hour, y=Count, group=Year)) + 
+#         geom_point() + 
+#         geom_line() + 
+#         facet_wrap(~Year) + 
+#         theme(axis.text.x=element_text(size=6))
 
 
 ggplot(data=casualties_hour[casualties_hour$Casualty_Severity == 1, ], aes(x=Hour, y=Count, group=Year)) + 
-        geom_point() + 
+        geom_bar(stat = 'identity', aes(fill=Year), colour="white", alpha=0.5) +
         geom_line() + 
         facet_wrap(~Year) + 
-        theme(axis.text.x=element_text(size=6))
+        xlab('Quarter') +
+        ylab('Count') + 
+        theme(legend.position = "none", 
+              axis.text.x=element_text(size=5))
+
 
 ```
 
-There is a increasing trend from around 7am to 7pm over the year. 
+There is a increasing trend from around 2am to 5pm over the year. 
 There is a peak from 2 to 7 pm. 
 Night time after 7 till 12 have more count of fatalities than after 12 till 5-6 pm. May be there are less number of cars and pedestrian then. 
 
-There is a sudden rise at 7 am. May be because of increase in bus and cars on road. 
+There is a sudden rise at 7 am. May be because of increase in buses and cars on road. 
 
+
+#### Pedestrian Fatalities Analysis
+```{r}
+
+t = (casualties_time$Casualty_Type  == 0)
+pedestrian_casualties_by_week <- casualties_time[t, ] %>%
+                                 group_by(Casualty_Severity, Day_of_Week, Year) %>%
+                                 summarise(Count=n())
+dim(casualties_time[t, ])
+ggplot(data=pedestrian_casualties_by_week[pedestrian_casualties_by_week$Casualty_Severity == 1, ], aes(x=Day_of_Week, y=Count)) +
+        geom_bar(stat = 'identity', aes(fill=Year)) +
+        geom_line() + 
+        facet_wrap(~Year) + 
+        xlab('Day of Week') +
+        ylab('Pedestrian Casualties Count') 
+
+```
+
+Severity 3 (fatal) cases are higher on sunday and saturday except 2016 year where thrusday, friday and saturday have higher count. 
+
+
+
+```{r}
+
+
+pedestrian_casualties_by_month <- casualties_time[t, ] %>%
+                    group_by(Casualty_Severity, Month, Year) %>%
+                    summarise(Count=n())
+
+ggplot(data=pedestrian_casualties_by_month[pedestrian_casualties_by_month$Casualty_Severity == 1, ], aes(x=Month, y=Count, group=Year)) +
+        geom_bar(stat = 'identity', aes(fill=Year)) +
+        geom_line() + 
+        facet_wrap(~Year) + 
+        xlab('Month') +
+        ylab('Pedestrian Casualties Count') 
+
+```
+
+
+There is an increaing trend from month January to December. Though there are few month with lower count in between. 
+
+
+```{r}
+
+
+pedestrian_casualties_by_quarter <- casualties_time[t, ] %>%
+                    group_by(Casualty_Severity, Quarter, Year) %>%
+                    summarise(Count=n())
+
+ggplot(data=pedestrian_casualties_by_quarter[pedestrian_casualties_by_quarter$Casualty_Severity == 1, ], aes(x=Quarter, y=Count, group=Year)) + 
+        geom_bar(stat = 'identity', aes(fill=Year)) +
+        geom_line() + 
+        facet_wrap(~Year) + 
+        xlab('Quarter') +
+        ylab('Pedestrian Casualties Count')
+
+
+```
+
+Over the year, There is an increasing trend for the fatalities case for  1st to 4th quarter. 
+For first quarter of year the count for fatalities have decreased over the but this is opposite for last 2 quarters.
+
+```{r}
+
+pedestrian_casualties_by_hour <- casualties_time[t, ] %>%
+                    group_by(Casualty_Severity, Hour, Year) %>%
+                    summarise(Count=n())
+
+# ggplot(data=casualties_hour[casualties_hour$Casualty_Severity == 1, ], aes(x=Hour, y=Count, group=Year)) + 
+#         geom_point() + 
+#         geom_line() + 
+#         facet_wrap(~Year) + 
+#         theme(axis.text.x=element_text(size=6))
+
+
+ggplot(data=pedestrian_casualties_by_hour[pedestrian_casualties_by_hour$Casualty_Severity == 1, ], aes(x=Hour, y=Count, group=1)) + 
+        geom_bar(stat = 'identity', aes(fill=Year), colour="white", alpha=0.5) +
+        geom_line() + 
+        facet_wrap(~Year) + 
+        xlab('Hour') +
+        ylab('Pedestrian Casualties Count') + 
+        theme(legend.position = "none", 
+              axis.text.x=element_text(size=5))
+
+
+```
+```{r}
+
+pedestrian_casualties_count <- casualties_time %>% 
+                              group_by(Date, Hour) %>%
+                              summarise(Count=n())
+
+#sum(is.na(pedestrian_casualties_hourly_count$Hour))
+
+
+#head(casualties_hourly_count)
+
+
+#casualties_calendar <- merge(casualties_time, casualties_hourly_count, by=c('Date', 'Hour')) 
+
+calendar_mm_df <- pedestrian_casualties_count %>%
+                frame_calendar(x=Hour, 
+                               y=Count, 
+                               date = Date, 
+                               calendar = "monthly")
+                  
+
+p1 <- calendar_mm_df %>%
+  ggplot(aes(x = .Hour, y = .Count, group = Date)) +
+  geom_line() 
+
+prettify(p1)
+
+
+
+```
+
+
+```{r}
+
+#head(casualties_time)
+y <- c(casualties_time$Year == 2018)
+c <- y & t
+pedestrian_casualties_mm_count <- casualties_time %>% 
+                              group_by(Date, Year, Hour) %>%
+                              summarise(Count=n())
+
+#sum(is.na(pedestrian_casualties_hourly_count$Hour))
+
+
+#head(casualties_hourly_count)
+
+
+#casualties_calendar <- merge(casualties_time, casualties_hourly_count, by=c('Date', 'Hour')) 
+
+calendar_mm_df <- pedestrian_casualties_mm_count %>%
+                frame_calendar(x=Hour, 
+                               y=Count, 
+                               date = Date)
+                  
+
+p1 <- ggplot(calendar_mm_df) +
+  geom_line(data=filter(calendar_mm_df, Year == 2016), aes(x = .Hour, y = .Count, group = Date), color='red') +
+  geom_line(data=filter(calendar_mm_df, Year == 2017), aes(x = .Hour, y = .Count, group = Date), color='blue') +
+  geom_line(data=filter(calendar_mm_df, Year == 2018), aes(x = .Hour, y = .Count, group = Date), color='yellow') 
+
+prettify(p1)
+
+
+
+```
+
+```{r}
+
+library('ggplot2')
+#install.packages("forecast") 
+library('forecast')
+library('tseries')
+
+```
+
+```{r}
+
+
+
+casualties_monthly_trend <- casualties_time %>%
+                              group_by(Date,Year, Month) %>%
+                              summarize(Count=n())
+
+ggplot(casualties_monthly_trend, aes(Date, Count)) + geom_line() + scale_x_date('month')  + ylab("Daily Casualties") +
+            xlab("")
+
+```
+There is no trend as such but there may be some seasonality.
+
+```{r}
+
+r <- casualties_time$Casualty_Type == 0
+casualties_monthly_trend <- casualties_time[r, ] %>%
+                              group_by(Date,Year, Month) %>%
+                              summarize(Count=n())
+
+ggplot(casualties_monthly_trend, aes(Date, Count)) + geom_line() + scale_x_date('month')  + ylab("Daily Casualties") +
+            xlab("")
+
+```
+
+
+Case for pedestrian is quite similar to overall casualties. 
+
+```{r}
+
+r <- casualties_time$Casualty_Type == 0 & casualties_time$Casualty_Severity == 3
+severity_3_monthly_trend <- casualties_time[r, ] %>%
+                              group_by(Date,Year, Month) %>%
+                              summarize(Count=n())
+
+ggplot(severity_3_monthly_trend, aes(Date, Count)) + geom_line() + scale_x_date('month')  + ylab("Daily Casualties") +
+            xlab("")
+```
+
+Pedestrain case with severity 3 have mean of around 50 cases daily for 1st quarter which decreases till 3rd quarter and then increase for 4th for all year 2016-2018. There seems to be a seasonal trend here. 
+
+
+```{r}
+
+r <- casualties_time$Casualty_Type == 0 & casualties_time$Casualty_Severity == 2
+severity_2_monthly_trend <- casualties_time[r, ] %>%
+                              group_by(Date,Year, Month) %>%
+                              summarize(Count=n())
+
+
+
+ggplot(severity_2_monthly_trend, aes(Date, Count)) + geom_line() + scale_x_date('month')  + ylab("Daily Casualties") +
+            xlab("")
+```
+
+Creating a u-shape seasonal trend every year.
+Pedestrain case with severity 2 have mean of around 15 cases daily for 1st quarter which decreases till 2nd quarter and then start increasing from 3rd for all year 2016-2018.There seems to be a seasonal trend here. 
+
+
+
+```{r}
+
+r <- casualties_time$Casualty_Type == 0 & casualties_time$Casualty_Severity == 1
+severity_1_monthly_trend <- casualties_time[r, ] %>%
+                              group_by(Date,Year, Month) %>%
+                              summarize(Count=n())
+
+
+
+ggplot(severity_1_monthly_trend, aes(Date, Count)) + geom_line() + scale_x_date('month')  + ylab("Daily Casualties") +
+            xlab("")
+```
+
+Similar to case 2, Creating a u-shape seasonal trend every year.
+Pedestrain case with severity 1 have mean of around 2 cases daily for 1st quarter which decreases till 2nd quarter and then start increasing from 3rd for all year 2016-2018.There seems to be a seasonal trend here. 
+
+
+```{r}
+
+
+casualties_monthly_trend$Count_MA <- ma(casualties_monthly_trend$Count, order=7)
+casualties_monthly_trend$Count_MA30 <- ma(casualties_monthly_trend$Count, order=30)
+
+# ggplot(casualties_monthly_trend, aes(Date, Count)) + geom_line() + scale_x_date('month')  + ylab("Daily Casualties") +
+#             xlab("")
+
+ggplot() + 
+  geom_line(data = casualties_monthly_trend, aes(x = Date, y = Count, colour = "Counts")) +
+  geom_line(data = casualties_monthly_trend, aes(x = Date, y = Count_MA,   colour = "Weekly Moving Average"))  +
+  geom_line(data = casualties_monthly_trend, aes(x = Date, y = Count_MA30, colour = "Monthly Moving Average"))  +
+  ylab('Casualties Count') 
+
+
+
+```
+
+```{r}
+
+count_ma = ts(na.omit(casualties_monthly_trend$Count_MA), frequency=30)
+decomp <- stl(count_ma, s.window = 'periodic')
+decomp_count <- seasadj(decomp)
+plot(decomp)
+
+```
+
+
+```{r}
+adf.test(count_ma, alternative = "stationary")
+
+```
+
+
+```{r}
+
+Acf(count_ma, main='')
+
+Pacf(count_ma, main='')
+```
+
+
+
+```{r}
+model_1 = arima(count_ma, order=c(1,1,7))
+model_1
+
+```
+
+
+
+
+```{r}
+model_2 = arima(count_ma, order=c(7,1,7))
+model_2
+
+```
+
+
+```{r}
+
+fcast <- forecast(model_2, h=90)
+plot(fcast)
+
+```
+
+```{r}
+ fit_w_seasonality = auto.arima(count_ma, seasonal=TRUE)
+fit_w_seasonality
+
+```
+
+
+```{r}
+
+f_cast <- forecast(fit_w_seasonality, h=90)
+plot(f_cast)
+
+```
